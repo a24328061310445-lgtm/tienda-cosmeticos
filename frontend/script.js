@@ -1,152 +1,130 @@
-const API = "http://localhost:3000/productos";
+// ==========================
+// VARIABLES
+// ==========================
+const nombre = document.getElementById("nombre");
+const precio = document.getElementById("precio");
+const categoria = document.getElementById("categoria");
+const btnAgregar = document.getElementById("btnAgregar");
+const lista = document.getElementById("lista");
+const buscador = document.getElementById("buscador");
 
+const carritoLista = document.getElementById("carritoLista");
+const totalSpan = document.getElementById("total");
+const btnPagar = document.getElementById("btnPagar");
+
+// ==========================
+// DATOS
+// ==========================
+let productos = [];
 let carrito = [];
 
-// 🔄 Cargar productos
-async function cargarProductos() {
-  try {
-    const res = await fetch(API);
-    const data = await res.json();
+// ==========================
+// AGREGAR PRODUCTO
+// ==========================
+btnAgregar.addEventListener("click", () => {
 
-    const lista = document.getElementById("lista");
+    if (nombre.value === "" || precio.value === "" || categoria.value === "") {
+        alert("Completa todos los campos");
+        return;
+    }
+
+    const producto = {
+        id: Date.now(),
+        nombre: nombre.value,
+        precio: parseFloat(precio.value),
+        categoria: categoria.value
+    };
+
+    productos.push(producto);
+
+    mostrarProductos();
+
+    nombre.value = "";
+    precio.value = "";
+    categoria.value = "";
+});
+
+// ==========================
+// MOSTRAR PRODUCTOS
+// ==========================
+function mostrarProductos(filtro = "") {
     lista.innerHTML = "";
 
-    data.forEach(p => {
-      const li = document.createElement("li");
+    const filtrados = productos.filter(p =>
+        p.nombre.toLowerCase().includes(filtro.toLowerCase())
+    );
 
-      li.innerHTML = `
-        ${p.nombre} - $${p.precio} (${p.categoria})
-        <div>
-          <button class="btnCarrito" onclick='agregarAlCarrito(${JSON.stringify(p)})'>🛒</button>
-          <button data-id="${p._id}" class="btnEliminar">❌</button>
-        </div>
-      `;
+    filtrados.forEach(p => {
+        const li = document.createElement("li");
 
-      lista.appendChild(li);
+        li.innerHTML = `
+            ${p.nombre} - $${p.precio} (${p.categoria})
+            <button onclick="eliminarProducto(${p.id})">❌</button>
+            <button onclick="agregarAlCarrito(${p.id})">🛒</button>
+        `;
+
+        lista.appendChild(li);
     });
-
-  } catch (error) {
-    console.log("❌ Error al cargar:", error);
-  }
 }
 
-// ➕ Agregar producto
-async function agregarProducto() {
-  const nombre = document.getElementById("nombre").value;
-  const precio = document.getElementById("precio").value;
-  const categoria = document.getElementById("categoria").value;
-
-  if (!nombre || !precio || !categoria) {
-    alert("⚠️ Llena todos los campos");
-    return;
-  }
-
-  try {
-    await fetch(API, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        nombre,
-        precio: Number(precio),
-        categoria
-      })
-    });
-
-    document.getElementById("nombre").value = "";
-    document.getElementById("precio").value = "";
-    document.getElementById("categoria").value = "";
-
-    cargarProductos();
-
-  } catch (error) {
-    console.log("❌ Error al agregar:", error);
-  }
+// ==========================
+// ELIMINAR PRODUCTO
+// ==========================
+function eliminarProducto(id) {
+    productos = productos.filter(p => p.id !== id);
+    mostrarProductos(buscador.value);
 }
 
-// 🗑️ Eliminar producto
-async function eliminarProducto(id) {
-  try {
-    await fetch(`${API}/${id}`, {
-      method: "DELETE"
-    });
-
-    cargarProductos();
-  } catch (error) {
-    console.log("❌ Error al eliminar:", error);
-  }
-}
-
-// 🎯 Evento eliminar (más seguro)
-document.addEventListener("click", function(e) {
-  if (e.target.classList.contains("btnEliminar")) {
-    const id = e.target.getAttribute("data-id");
-    eliminarProducto(id);
-  }
+// ==========================
+// BUSCADOR
+// ==========================
+buscador.addEventListener("input", () => {
+    mostrarProductos(buscador.value);
 });
 
-// 🛒 Agregar al carrito
-function agregarAlCarrito(producto) {
-  carrito.push(producto);
-  renderCarrito();
+// ==========================
+// CARRITO
+// ==========================
+function agregarAlCarrito(id) {
+    const producto = productos.find(p => p.id === id);
+    carrito.push(producto);
+    mostrarCarrito();
 }
 
-// 🔄 Render carrito
-function renderCarrito() {
-  const lista = document.getElementById("carritoLista");
-  const totalSpan = document.getElementById("total");
+function mostrarCarrito() {
+    carritoLista.innerHTML = "";
+    let total = 0;
 
-  lista.innerHTML = "";
-  let total = 0;
+    carrito.forEach((p, index) => {
+        total += p.precio;
 
-  carrito.forEach((p, index) => {
-    total += p.precio;
+        const li = document.createElement("li");
+        li.innerHTML = `
+            ${p.nombre} - $${p.precio}
+            <button onclick="eliminarDelCarrito(${index})">❌</button>
+        `;
 
-    const li = document.createElement("li");
-    li.innerHTML = `
-      ${p.nombre} - $${p.precio}
-      <button onclick="eliminarDelCarrito(${index})">❌</button>
-    `;
-    lista.appendChild(li);
-  });
+        carritoLista.appendChild(li);
+    });
 
-  totalSpan.textContent = total;
+    totalSpan.textContent = total;
 }
 
-// ❌ eliminar del carrito
 function eliminarDelCarrito(index) {
-  carrito.splice(index, 1);
-  renderCarrito();
+    carrito.splice(index, 1);
+    mostrarCarrito();
 }
 
-// 💳 pagar
-document.getElementById("btnPagar").addEventListener("click", () => {
-  if (carrito.length === 0) {
-    alert("🛒 Tu carrito está vacío");
-    return;
-  }
+// ==========================
+// PAGAR
+// ==========================
+btnPagar.addEventListener("click", () => {
+    if (carrito.length === 0) {
+        alert("El carrito está vacío");
+        return;
+    }
 
-  alert("💖 Compra realizada con éxito 💳✨");
-
-  carrito = [];
-  renderCarrito();
+    alert("Compra realizada con éxito 🛍️");
+    carrito = [];
+    mostrarCarrito();
 });
-
-// 🔍 buscador
-document.getElementById("buscador").addEventListener("input", function () {
-  const texto = this.value.toLowerCase();
-  const items = document.querySelectorAll("#lista li");
-
-  items.forEach(li => {
-    li.style.display = li.textContent.toLowerCase().includes(texto)
-      ? "flex"
-      : "none";
-  });
-});
-
-// 🎯 botón agregar
-document.getElementById("btnAgregar").addEventListener("click", agregarProducto);
-
-// 🚀 iniciar
-cargarProductos();
